@@ -57,17 +57,6 @@ docker run -d --name service-monitor --env-file .env service-monitor
 docker logs -f service-monitor
 ```
 
-## Project Structure
-
-```text
-aws-ec2-service-monitoring/
-├── agent.py
-├── Dockerfile
-├── requirements.txt
-├── README.md
-└── .gitignore
-```
-
 ## Outcome
 
 Demonstrates automated **service-level failure detection and recovery** using AWS services, Python automation, Docker, and Linux service management.

@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 
 import boto3
@@ -9,81 +8,103 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
 )
 
-region = os.getenv("AWS_REGION", "ap-south-2")
+region = "ap-south-2"
 
+# Apache servers
 instance_ids = [
-    instance_id.strip()
-    for instance_id in os.getenv("INSTANCE_IDS", "").split(",")
-    if instance_id.strip()
+    "i-0b59cc3009d067172",  # Apache Server 1
+    "i-090de2cdc55f2bb35",  # Apache Server 2
 ]
-
-service_name = os.getenv("SERVICE_NAME", "httpd")
 
 ssm = boto3.client(
     "ssm",
     region_name=region
 )
 
-while True:
+
+def check_httpd(instance_id):
     try:
-        for instance_id in instance_ids:
+        response = ssm.send_command(
+            InstanceIds=[instance_id],
+            DocumentName="AWS-RunShellScript",
+            Parameters={
+                "commands": [
+                    "systemctl is-active httpd"
+                ]
+            }
+        )
 
-            response = ssm.send_command(
-                InstanceIds=[instance_id],
-                DocumentName="AWS-RunShellScript",
-                Parameters={
-                    "commands": [
-                        f"systemctl is-active {service_name}"
-                    ]
-                }
-            )
+        command_id = response["Command"]["CommandId"]
 
-            command_id = response["Command"]["CommandId"]
+        time.sleep(2)
 
-            time.sleep(2)
+        result = ssm.get_command_invocation(
+            CommandId=command_id,
+            InstanceId=instance_id
+        )
 
-            result = ssm.get_command_invocation(
-                CommandId=command_id,
-                InstanceId=instance_id
-            )
+        status = result.get(
+            "StandardOutputContent",
+            ""
+        ).strip()
 
-            status = result.get(
-                "StandardOutputContent",
-                ""
-            ).strip()
+        if status == "active":
 
             logging.info(
-                "%s: %s status = %s",
-                instance_id,
-                service_name,
-                status
+                "%s: Apache is running",
+                instance_id
             )
 
-            if status != "active":
+        else:
 
-                logging.warning(
-                    "%s: %s stopped. Restarting...",
-                    instance_id,
-                    service_name
-                )
+            logging.warning(
+                "%s: Apache is DOWN. Restarting...",
+                instance_id
+            )
 
-                ssm.send_command(
-                    InstanceIds=[instance_id],
-                    DocumentName="AWS-RunShellScript",
-                    Parameters={
-                        "commands": [
-                            f"systemctl restart {service_name}"
-                        ]
-                    }
-                )
-
-                logging.info(
-                    "%s: %s restart requested",
-                    instance_id,
-                    service_name
-                )
+            restart_httpd(instance_id)
 
     except Exception:
-        logging.exception("Service monitoring failed")
+        logging.exception(
+            "Apache check failed for %s",
+            instance_id
+        )
+
+
+def restart_httpd(instance_id):
+
+    try:
+
+        response = ssm.send_command(
+            InstanceIds=[instance_id],
+            DocumentName="AWS-RunShellScript",
+            Parameters={
+                "commands": [
+                    "systemctl restart httpd"
+                ]
+            }
+        )
+
+        command_id = response["Command"]["CommandId"]
+
+        logging.warning(
+            "%s: Apache restart requested. Command ID: %s",
+            instance_id,
+            command_id
+        )
+
+    except Exception:
+
+        logging.exception(
+            "Failed to restart Apache on %s",
+            instance_id
+        )
+
+
+while True:
+
+    for instance_id in instance_ids:
+
+        check_httpd(instance_id)
 
     time.sleep(10)

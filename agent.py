@@ -9,7 +9,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
 )
 
-region = os.getenv("AWS_REGION", "ap-south-1")
+region = os.getenv("AWS_REGION", "ap-south-2")
 
 instance_ids = [
     instance_id.strip()

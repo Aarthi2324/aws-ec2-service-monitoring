@@ -1,30 +1,73 @@
 # AWS EC2 Service Monitoring & Auto-Recovery
 
-This project provides an automated solution for monitoring and recovering Linux services running on AWS EC2 instances. A Python-based monitoring agent runs inside a Docker container on a dedicated monitoring EC2 instance and uses AWS Systems Manager (SSM) to remotely check the status of services running on two monitored EC2 instances. When a service is active, the agent continues monitoring without taking any action. If a service becomes inactive, the agent automatically sends a restart command through SSM to restore the service.
+## Overview
 
-The project uses AWS IAM roles to provide secure permissions without storing AWS access keys in the application. The monitored EC2 instances use the `AmazonSSMManagedInstanceCore` policy, while the monitoring instance uses permissions such as `ssm:SendCommand` and `ssm:GetCommandInvocation`. Environment variables are used to configure the AWS region, monitored EC2 instance IDs, and service name.
+Automated monitoring and recovery of services running on AWS EC2 instances using **Python, Boto3, AWS Systems Manager (SSM), Docker, and IAM**.
 
-### Technologies
+A dedicated monitoring EC2 instance runs a Dockerized Python agent that continuously checks service status on configured EC2 instances. If a service becomes inactive, the agent automatically triggers a restart through SSM.
 
-AWS EC2, AWS IAM, AWS Systems Manager (SSM), Python, Boto3, Docker, and Linux.
-
-### Workflow
+## Architecture
 
 ```text
-EC2-3 Monitoring Server
-        |
-   Docker + Python
-        |
-       SSM
-     /     \
-    ▼       ▼
- EC2-1    EC2-2
- Service  Service
-    |       |
-    └───┬───┘
-        |
-   Auto Recovery
+Monitoring EC2
+      │
+Docker + Python
+      │
+ Boto3 + SSM
+      │
+ ┌────┴────┐
+ ▼         ▼
+EC2-1     EC2-2
+httpd     httpd
+   │        │
+   └─ Auto-Recovery
 ```
 
-The monitoring agent continuously checks the configured services and automatically performs recovery when a service stops, providing a simple and secure approach to EC2 service monitoring and automation.
+## Workflow
 
+```text
+Check Service
+     ↓
+Service Active?
+  ↙       ↘
+Yes        No
+ ↓          ↓
+Continue   SSM Restart
+              ↓
+        Service Restored
+```
+
+## Technologies
+
+**AWS EC2 | AWS SSM | IAM | Python | Boto3 | Docker | Linux**
+
+## Key Features
+
+* Automated service health monitoring
+* Automatic service recovery
+* Secure IAM-based AWS access
+* Dockerized monitoring agent
+* Reduced manual intervention
+
+## Docker
+
+```bash
+docker build -t service-monitor .
+docker run -d --name service-monitor --env-file .env service-monitor
+docker logs -f service-monitor
+```
+
+## Project Structure
+
+```text
+aws-ec2-service-monitoring/
+├── agent.py
+├── Dockerfile
+├── requirements.txt
+├── README.md
+└── .gitignore
+```
+
+## Outcome
+
+Demonstrates automated **service-level failure detection and recovery** using AWS services, Python automation, Docker, and Linux service management.
